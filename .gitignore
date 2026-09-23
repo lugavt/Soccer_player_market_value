@@ -1,3 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Data files (large — use DVC or share separately)
+data/*.parquet
+data/*.csv
+data/*.db
+
+# Models (large — store in cloud or DVC)
+models/*.pkl
+models/*.joblib
+models/*.json
+
+# Outputs (regenerate from notebooks)
+outputs/*
+!outputs/.gitkeep
+
+# R leftovers
 .Rproj.user
 .Rhistory
 .RData
