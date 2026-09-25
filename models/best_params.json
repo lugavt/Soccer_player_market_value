@@ -1,0 +1,16 @@
+{
+  "params": {
+    "max_depth": 6,
+    "learning_rate": 0.01213649290524496,
+    "min_child_weight": 6.960058493732583,
+    "subsample": 0.6593884881342718,
+    "colsample_bytree": 0.5724465415137494,
+    "reg_alpha": 0.2291861176033899,
+    "reg_lambda": 1.560496839629306,
+    "gamma": 0.08083647312077534
+  },
+  "cv_rmse_log": 0.7007345591604055,
+  "cv_rmse_log_current_params": 0.7183547783423281,
+  "trials": 100,
+  "folds": "walk-forward, validation seasons 2019-2023"
+}

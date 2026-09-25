@@ -1,0 +1,15 @@
+pandas
+numpy
+matplotlib
+scikit-learn
+xgboost
+shap
+requests
+beautifulsoup4
+rapidfuzz
+fastapi
+uvicorn[standard]
+streamlit
+python-dotenv
+pyarrow
+playwright

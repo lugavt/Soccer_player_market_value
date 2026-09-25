@@ -28,6 +28,8 @@ data/*.db
 models/*.pkl
 models/*.joblib
 models/*.json
+# tuned hyperparameters are small and costly to regenerate: keep them in git
+!models/best_params.json
 
 # Outputs (regenerate from notebooks)
 outputs/*
@@ -38,3 +40,6 @@ outputs/*
 .Rhistory
 .RData
 .Ruserdata
+
+# FBref raw HTML cache + browser profile (notebook 05)
+data/_fbref/
