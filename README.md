@@ -22,7 +22,7 @@ Data, model and a first version of the app all work.
 ## Setup
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate   # or use Docker, below
 pip install -r requirements.txt
 ```
 
@@ -69,6 +69,24 @@ Two things that will bite you if you skip them:
 - **SHAP values are in log-space.** `baseline + sum(shap) == prediction` holds
   exactly in log-space and not after `np.exp()`. Never label raw SHAP values as
   EUR without doing the conversion.
+
+## Run with Docker
+
+One image covers the app, the training jobs and the notebooks, with the same
+package versions as the local environment (`requirements.txt` is pinned).
+`data/` and `models/` are mounted, not copied, so Docker and a local Python
+read and write the same files.
+
+```bash
+docker compose up --build                       # app -> http://localhost:8501
+docker compose run --rm train                   # retrain (writes models/, data/)
+docker compose run --rm tune                    # re-run the Optuna search (~10 min)
+docker compose --profile notebooks up jupyter   # notebooks; the URL with its token is in the log
+docker compose down                             # stop everything
+```
+
+Rebuild with `--build` after changing code. Notebook 05's hand-saved FBref pages
+live in `data/_fbref/html/`, so they are visible inside the container too.
 
 ## Run the app
 

@@ -1,0 +1,15 @@
+# Mounted at runtime instead (docker-compose.yml) — keeps the image small and
+# the data shared with the local environment.
+data/
+models/
+outputs/
+
+# local tooling and caches
+.git/
+.venv/
+venv/
+.claude/
+**/__pycache__/
+**/.ipynb_checkpoints/
+.DS_Store
+*.pyc
