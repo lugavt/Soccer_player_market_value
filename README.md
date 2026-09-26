@@ -14,7 +14,7 @@ Data, model and a first version of the app all work.
 | Layer | State |
 |---|---|
 | Scrapers (Transfermarkt, Understat) | Done — notebooks 01 and 02 |
-| Feature pipeline (50 features) | Done — `src/features/engineer.py` |
+| Feature pipeline (47 features) | Done — `src/features/engineer.py` |
 | Model (XGBoost, Optuna-tuned, R²=0.825, MAPE=31.6%, leakage-free) | Done — `src/models/train.py` |
 | Prediction + SHAP explanations | Done — `src/models/predict.py` |
 | Streamlit app | Done — `streamlit run app/main.py` |
@@ -88,35 +88,54 @@ docker compose down                             # stop everything
 Rebuild with `--build` after changing code. Notebook 05's hand-saved FBref pages
 live in `data/_fbref/html/`, so they are visible inside the container too.
 
+## Deploy (private Hugging Face Space)
+
+`deploy/` holds an app-only image with the data and models baked in (~28 MB of
+artifacts), because a Space has no mounted `data/` folder.
+
+```bash
+hf auth login                                   # once: a token with write access
+python deploy/build_space.py                    # assemble build/hf_space/ and check it
+docker build -t transfer-edge-space build/hf_space && \
+  docker run --rm -p 7860:8501 transfer-edge-space   # optional local test -> :7860
+python deploy/build_space.py --push             # upload as a PRIVATE Space
+```
+
+The Space is always created (or reset to) private: the data is not licensed for
+redistribution. To give other people access, put the Space under a Hugging Face
+organisation (`--repo my-org/transfer-edge`) and add them as members. Re-run
+`--push` after retraining to redeploy.
+
 ## Run the app
 
 ```bash
 streamlit run app/main.py
 ```
 
-Currently a title and two TODOs. [docs/handoff.md](docs/handoff.md) has a
-screen-by-screen build plan.
+Two tabs. **Player search** (current season): valuation against the listed value
+with a calibrated 50% range, value history, season stats with percentiles against
+positional peers, and the full SHAP breakdown. **Leaderboard**: most undervalued
+players by position, with a minimum-value filter.
+
+After changing anything in `src/`, restart the app — Streamlit reloads
+`app/main.py` on its own, but not the modules it imports.
 
 ## Layout
 
 ```
-CLAUDE.md          Technical reference — schemas, endpoints, model, gotchas
-AGENTS.md          Symlink to CLAUDE.md
+docs/handoff.md    State of the project, decisions already made, next steps
 docs/roadmap.md    Positioning, go-to-market, MVP definition of done
-docs/handoff.md    Where the project stands and how to build the app next
-notebooks/         01 scrape TM → 02 scrape Understat + merge → 03 EDA → 04 train
-src/data/          Parquet loaders
-src/features/      Feature engineering, undervalue score
-src/models/        Training, prediction, SHAP
-app/               Streamlit MVP
+notebooks/         01 scrape TM → 02 Understat + merge → 05 FBref → 03 EDA → 04 train
+src/data/          Parquet loaders, FBref matching
+src/features/      Feature engineering (leakage rules live here)
+src/models/        Training, tuning, prediction, SHAP, intervals, app scoring
+app/               Streamlit app (+ assets/favicon.png)
+Dockerfile, docker-compose.yml   One image for app, jobs and notebooks
 ```
 
 ## Docs
 
-- **[CLAUDE.md](CLAUDE.md)** — data schemas, scraping endpoints, fuzzy-matching
-  rules, feature definitions, and the gotchas list. Read this before changing
-  the pipeline.
 - **[docs/roadmap.md](docs/roadmap.md)** — the four product modules, competitive
   positioning, go-to-market.
-- **[docs/handoff.md](docs/handoff.md)** — current state and the concrete next
-  steps for the Streamlit MVP.
+- **[docs/handoff.md](docs/handoff.md)** — current state, model card, decisions
+  already made (and why), prioritised next steps, yearly update runbook.

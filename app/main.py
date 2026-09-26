@@ -87,7 +87,9 @@ FEATURE_GLOSSARY = {
     ),
 }
 
-st.set_page_config(page_title="Transfer Edge", layout="wide")
+FAVICON = Path(__file__).parent / "assets" / "favicon.png"
+
+st.set_page_config(page_title="Transfer Edge", page_icon=str(FAVICON), layout="wide")
 
 
 @st.cache_resource
@@ -486,6 +488,9 @@ with leaderboard_tab:
         min_market_value=min_value,
     )
     table = table.assign(undervalue_pct=table["undervalue_score"] * 100)
+    # money columns in EUR millions: "€10.0M" reads faster than "EUR 10000000"
+    money = ["market_value", "pred_value", "low_50", "high_50"]
+    table = table.assign(**{c: table[c] / 1e6 for c in money if c in table.columns})
 
     shown = ["player_name", "club", "age", "pos_group", "market_value", "pred_value",
              "low_50", "high_50", "undervalue_pct"]
@@ -496,10 +501,10 @@ with leaderboard_tab:
             "club": "Club",
             "age": st.column_config.NumberColumn("Age", format="%.0f"),
             "pos_group": "Position",
-            "market_value": st.column_config.NumberColumn("Market value", format="EUR %.0f"),
-            "pred_value": st.column_config.NumberColumn("Predicted", format="EUR %.0f"),
-            "low_50": st.column_config.NumberColumn("50% range from", format="EUR %.0f"),
-            "high_50": st.column_config.NumberColumn("50% range to", format="EUR %.0f"),
+            "market_value": st.column_config.NumberColumn("Market value", format="€%.1fM"),
+            "pred_value": st.column_config.NumberColumn("Predicted", format="€%.1fM"),
+            "low_50": st.column_config.NumberColumn("50% range from", format="€%.1fM"),
+            "high_50": st.column_config.NumberColumn("50% range to", format="€%.1fM"),
             "undervalue_pct": st.column_config.NumberColumn("Undervalued by", format="%+.0f%%"),
         },
         hide_index=True,

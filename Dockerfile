@@ -13,7 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_ROOT_USER_ACTION=ignore \
-    # notebooks locate the project from this instead of walking up to CLAUDE.md
+    # notebooks locate the project from this instead of searching for src/
     TRANSFER_EDGE_ROOT=/app \
     # shap imports numba, and matplotlib writes a font cache: both need a writable dir
     NUMBA_CACHE_DIR=/tmp/numba \

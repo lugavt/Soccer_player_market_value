@@ -2,7 +2,7 @@
 
 Product and business context for Transfer Edge. The technical reference —
 schemas, model details, feature definitions, gotchas — lives in
-[CLAUDE.md](../CLAUDE.md). This file holds what that one deliberately leaves
+[README](../README.md) and [handoff](handoff.md). This file holds what those leave
 out: who we're competing with, how we'd sell it, and what counts as done.
 
 ## What "done" looks like for the MVP
@@ -42,7 +42,7 @@ A Streamlit app where you can:
 ## Build order beyond the MVP
 
 The four product modules (Scout, Value, Fit, Sell) and the week-by-week build
-order are specified in [CLAUDE.md](../CLAUDE.md). In short: Scout and Value are
-MVP scope, Fit and Sell come after. The nearest technical milestones are
-position-specific models, real quantile-regression confidence intervals to
-replace the MAPE band, and an FBref scraper for defensive and progression stats.
+order are tracked in [handoff.md](handoff.md). In short: Scout and Value are
+MVP scope, Fit and Sell come after. Calibrated intervals and FBref basics are
+done; the nearest milestones are contract length, a backtest of whether
+"undervalued" players actually appreciate, and position-specific models.

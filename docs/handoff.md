@@ -1,7 +1,8 @@
 # Handoff — Transfer Edge (La Liga)
 
 Snapshot of 2026-09-25. What exists, what was decided and why, and what to do next.
-Technical reference (schemas, features, gotchas) is in [CLAUDE.md](../CLAUDE.md).
+Setup and commands are in the [README](../README.md); the leakage rules are documented in
+`src/features/engineer.py`, where they are enforced.
 
 ## Where things stand
 
@@ -16,7 +17,7 @@ Technical reference (schemas, features, gotchas) is in [CLAUDE.md](../CLAUDE.md)
 | Intervals (`src/models/intervals.py`) | Calibrated 50% / 80% ranges (conformalized quantile regression) |
 | App (`app/main.py`) | Done — player search (current season), valuation + 50% range, value history, full SHAP, leaderboard |
 | Tests / CI | None |
-| Deployment | None — runs locally |
+| Deployment | Private Hugging Face Space via `deploy/build_space.py --push` (see README) |
 | Version control | **Nothing since the restructure is committed** |
 
 ## Model card
