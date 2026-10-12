@@ -83,7 +83,7 @@ TARGET = "log_value"
 # stays available for EDA and any future GK-specific model.
 EXCLUDED_POSITIONS = {"GK"}
 
-# The 47 features the model is trained on — order must match training.
+# The 37 features the model is trained on — order must match training.
 # (46 -> 44: posgrp_DM removed by the DM/DEF merge, posgrp_GK removed because
 # goalkeepers are excluded from training — see the module docstring.)
 FEATURE_COLS = [
@@ -107,11 +107,12 @@ FEATURE_COLS = [
     # Position one-hot (ATT dropped as reference — alphabetically first;
     # GK excluded from training, DM merged into DEF — see module docstring)
     "posgrp_DEF", "posgrp_MID",
-    # Nationality one-hot (Argentina dropped as reference — it is the
-    # alphabetically first category, which is what drop_first=True removes)
-    "natgrp_Brazil", "natgrp_Colombia", "natgrp_France", "natgrp_Morocco",
-    "natgrp_Other", "natgrp_Portugal", "natgrp_Senegal", "natgrp_Serbia",
-    "natgrp_Spain", "natgrp_Uruguay",
+    # No nationality features, on purpose: the product prices what a player does,
+    # and "worth 7% less for being Spanish" isn't a defensible explanation. Removing
+    # the 10 nationality one-hots cost no measurable accuracy (test RMSE(log) +0.005,
+    # 95% CI across zero). The real market effect behind them — La Liga's limit of
+    # three non-EU players per squad — would come back as a non-EU flag, which
+    # needs dual citizenship data we don't have yet.
 ]
 
 
@@ -202,8 +203,8 @@ def build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
     """Turn the raw merged panel into a modelling frame.
 
     Returns a copy with `log_value` (the target), every column in
-    `FEATURE_COLS`, and the helper columns `pos_group` / `nat_group` kept for
-    grouping and display. Rows with a missing or non-positive market value are
+    `FEATURE_COLS`, and the helper column `pos_group` kept for grouping and
+    display. Rows with a missing or non-positive market value are
     dropped, since the target is log(market_value).
     """
     df = df_raw.copy()
@@ -238,11 +239,6 @@ def build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
         df["position_us"].apply(position_versatility)
         if "position_us" in df.columns else np.nan
     )
-
-    top_nat = df["nationality"].value_counts().head(10).index
-    df["nat_group"] = df["nationality"].apply(lambda x: x if x in top_nat else "Other")
-    nat_dummies = pd.get_dummies(df["nat_group"], prefix="natgrp", drop_first=True).astype(int)
-    df = pd.concat([df, nat_dummies], axis=1)
 
     # ── 1. xG overperformance (clinical finishers) ───────────────────────────
     df["goals_minus_xG"] = df["goals"] - df["xG"]
@@ -295,7 +291,7 @@ def select_features(df: pd.DataFrame) -> pd.DataFrame:
     XGBoost handles natively.
     """
     X = df.reindex(columns=FEATURE_COLS)
-    onehot = [c for c in FEATURE_COLS if c.startswith(("posgrp_", "natgrp_"))]
+    onehot = [c for c in FEATURE_COLS if c.startswith("posgrp_")]
     X[onehot] = X[onehot].fillna(0).astype(int)
     return X
 

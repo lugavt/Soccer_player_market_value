@@ -81,10 +81,6 @@ FEATURE_GLOSSARY = {
         "How many distinct positions (defence, midfield, attack) the player "
         "was used in that season. Versatile players carry a premium."
     ),
-    "natgrp_Spain": (
-        "Whether the player's nationality group is Spain (1) or not (0), one "
-        "of the model's nationality indicator features."
-    ),
 }
 
 FAVICON = Path(__file__).parent / "assets" / "favicon.png"
@@ -451,7 +447,7 @@ with search_tab:
         "Values are in log-space, where they sum exactly to the prediction -- "
         "individual numbers are not euro amounts. A bar of +0.1 means roughly "
         "+10% on the valuation. Bars at zero are features that did not matter "
-        "for this player (e.g. nationality flags that don't apply)."
+        "for this player (e.g. the position flags that don't apply to him)."
     )
 
     with st.expander("What do these features mean?"):

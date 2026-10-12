@@ -12,12 +12,12 @@ Setup and commands are in the [README](../README.md); the leakage rules are docu
 | Understat scraper + join (notebook 02) | Done — one-to-one fuzzy join, name + club |
 | FBref (notebook 05) | Done, **basics only** — hand-saved `misc` pages; FBref lost Opta's advanced data |
 | EDA (notebook 03) | Done, current |
-| Features (`src/features/engineer.py`) | 47 features, leakage rules enforced in code |
+| Features (`src/features/engineer.py`) | 37 features, leakage rules enforced in code |
 | Model (`src/models/train.py`, `tune.py`) | XGBoost, Optuna-tuned, walk-forward CV |
 | Intervals (`src/models/intervals.py`) | Calibrated 50% / 80% ranges (conformalized quantile regression) |
 | App (`app/main.py`) | Done — player search (current season), valuation + 50% range, value history, full SHAP, leaderboard |
 | Tests / CI | None |
-| Deployment | Private Hugging Face Space via `deploy/build_space.py --push` (see README) |
+| Deployment | **Live, public:** https://transfer-edge-app.streamlit.app (Streamlit Community Cloud), deployed from the private repo `transfer-edge-app` with `deploy/build_space.py` — see README |
 | Version control | **Nothing since the restructure is committed** |
 
 ## Model card
@@ -26,8 +26,8 @@ Setup and commands are in the [README](../README.md); the leakage rules are docu
 - **Rows:** outfield player-seasons, 2017–2025. Goalkeepers excluded; DM folded into DEF;
   interpolated values never used.
 - **Split:** train ≤2022 (2,985), validate 2023 (638), test 2024–2025 (1,306).
-- **Test:** R² 0.825, RMSE(log) 0.703, median absolute % error 31.6% (Ridge baseline 55%).
-- **Intervals on test:** the 80% range holds the listed value 78% of the time, the 50% range 51%.
+- **Test:** R² 0.821, RMSE(log) 0.712, median absolute % error 31.0% (Ridge baseline 55%).
+- **Intervals on test:** the 80% range holds the listed value 78% of the time, the 50% range 54%.
   Wide by nature — median 80% range spans ~4.7× from low to high. Weakest for the most
   expensive quarter of players (~72% coverage).
 - **Known blind spot:** young breakout players priced on hype (Lamine Yamal: model ~€126M vs
@@ -44,6 +44,8 @@ Setup and commands are in the [README](../README.md); the leakage rules are docu
 | Keep last season's value (`log_value_lag1`) | Removing it: MAPE 32% → 44%; its "undervalued" list filled with aging veterans, not gems |
 | Keep FBref features | Small gain (RMSE 0.730 → 0.714), CI touches zero; costs one hand-saved page a season |
 | Optuna params | CV RMSE −2.5%; test RMSE −1.4% with CI below zero; typical error unchanged |
+| No nationality features | No measurable accuracy loss (RMSE +0.005, CI across zero); "worth 7% less for being Spanish" is not a defensible explanation. A non-EU flag (squad quota) is the principled replacement, once dual-citizenship data exists |
+| App public, bundle repo private | A non-commercial portfolio demo; the raw data and model files are never downloadable. Accepted risk: the photos (IMAGO copyright, served by Transfermarkt) are the most likely trigger for a takedown — removing them is the first move if one comes |
 | No FastAPI layer | Nothing but Streamlit consumes predictions yet |
 
 ## Next steps, in priority order
@@ -72,9 +74,8 @@ Setup and commands are in the [README](../README.md); the leakage rules are docu
 7. **Tests and CI.** Encode the invariants that bit us: one row per (year, player_id); every
    Understat/FBref id used once per season; no imputed row in any split; `club_med_value` never
    contains the player's value; test coverage of the 80% range ≥ 75%. *Effort: M.*
-8. **Deploy the app** (Streamlit Community Cloud or Render). The parquets and pickles are
-   gitignored, so ship a small app snapshot (current-season scores + model) or add a build step.
-   *Effort: M.*
+8. ~~**Deploy the app**~~ — done: https://transfer-edge-app.streamlit.app. To redeploy after retraining, rerun
+   `deploy/build_space.py --target streamlit ...` and push from your terminal.
 9. **Optional — a "performance-only" lens** in the app: the valuation without last season's
    value, shown next to the main one. A different question (what do his stats alone justify?),
    not a better answer.

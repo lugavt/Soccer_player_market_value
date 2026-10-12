@@ -14,8 +14,8 @@ Data, model and a first version of the app all work.
 | Layer | State |
 |---|---|
 | Scrapers (Transfermarkt, Understat) | Done — notebooks 01 and 02 |
-| Feature pipeline (47 features) | Done — `src/features/engineer.py` |
-| Model (XGBoost, Optuna-tuned, R²=0.825, MAPE=31.6%, leakage-free) | Done — `src/models/train.py` |
+| Feature pipeline (37 features) | Done — `src/features/engineer.py` |
+| Model (XGBoost, Optuna-tuned, R²=0.821, MAPE=31.0%, leakage-free) | Done — `src/models/train.py` |
 | Prediction + SHAP explanations | Done — `src/models/predict.py` |
 | Streamlit app | Done — `streamlit run app/main.py` |
 
@@ -88,23 +88,36 @@ docker compose down                             # stop everything
 Rebuild with `--build` after changing code. Notebook 05's hand-saved FBref pages
 live in `data/_fbref/html/`, so they are visible inside the container too.
 
-## Deploy (private Hugging Face Space)
+## Deploy
 
-`deploy/` holds an app-only image with the data and models baked in (~28 MB of
-artifacts), because a Space has no mounted `data/` folder.
+**Live app: https://transfer-edge-app.streamlit.app** — public, as a non-commercial portfolio demo.
+
+`deploy/build_space.py` assembles an app-only bundle — code plus the ~28 MB of
+data and models the app reads, since no host has our `data/` folder. The app is
+public, but **the bundle repository must stay private**: it holds the raw data
+and model files, and Transfermarkt, Understat and FBref data isn't licensed for
+redistribution. This repository is public too: **never commit the bundle here**.
+
+**Streamlit Community Cloud** (free; the app is public, its source repo private):
 
 ```bash
-hf auth login                                   # once: a token with write access
-python deploy/build_space.py                    # assemble build/hf_space/ and check it
-docker build -t transfer-edge-space build/hf_space && \
-  docker run --rm -p 7860:8501 transfer-edge-space   # optional local test -> :7860
-python deploy/build_space.py --push             # upload as a PRIVATE Space
+# once: create an empty PRIVATE GitHub repo, e.g. transfer-edge-app
+python deploy/build_space.py --target streamlit \
+    --git-remote git@github.com:<you>/transfer-edge-app.git
 ```
 
-The Space is always created (or reset to) private: the data is not licensed for
-redistribution. To give other people access, put the Space under a Hugging Face
-organisation (`--repo my-org/transfer-edge`) and add them as members. Re-run
-`--push` after retraining to redeploy.
+Then on share.streamlit.io: *Create app* → that repo, branch `main`, file
+`app/main.py`, Advanced settings → Python 3.13. Visibility is set in the app's
+*Settings → Sharing* (currently public). `build/streamlit_app/` keeps its git
+history, so after retraining the same command redeploys (Community Cloud
+rebuilds on push).
+
+**Hugging Face Space** (Docker Spaces need a PRO subscription):
+
+```bash
+hf auth login
+python deploy/build_space.py --push             # PRIVATE Space <you>/transfer-edge
+```
 
 ## Run the app
 
