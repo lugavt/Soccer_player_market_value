@@ -42,6 +42,7 @@ DATA_DIR = Path(__file__).parents[2] / "data"
 MANUAL_DIR = DATA_DIR / "manual"
 OVERRIDES_PATH = MANUAL_DIR / "id_overrides.csv"
 CROSSWALK_PATH = DATA_DIR / "id_crosswalk.parquet"
+CLUBS_PATH = MANUAL_DIR / "club_crosswalk.csv"
 FBREF_MAP_URL = ("https://raw.githubusercontent.com/JaseZiv/worldfootballR_data/master/"
                  "raw-data/fbref-tm-player-mapping/output/fbref_to_tm_mapping.csv")
 FBREF_MAP_PATH = DATA_DIR / "_fbref" / "fbref_to_tm_mapping.csv"
@@ -315,16 +316,28 @@ def fbref_players(fb: pd.DataFrame) -> pd.DataFrame:
     }).reset_index().rename(columns={"fbref_id": "src_id"})
 
 
-def build_crosswalk(panel: pd.DataFrame, understat: pd.DataFrame, fbref: pd.DataFrame | None,
-                    write: bool = True) -> dict:
-    """Clubs, links, conflicts and review tables for both sources; optionally written to disk.
+def _replace_rows(path: Path, new: pd.DataFrame, sources: list[str]) -> None:
+    """Write `new` to `path`, keeping the rows of sources not rebuilt this time."""
+    read, write = ((pd.read_parquet, pd.DataFrame.to_parquet) if path.suffix == ".parquet"
+                   else (pd.read_csv, pd.DataFrame.to_csv))
+    if path.exists():
+        old = read(path, dtype=str) if path.suffix == ".csv" else read(path)
+        new = pd.concat([old[~old["source"].isin(sources)], new], ignore_index=True)
+    write(new.sort_values("source", kind="stable"), path, index=False)
 
-    Every input needs `league_code`. Returns a dict with `crosswalk` (all links),
+
+def build_crosswalk(panel: pd.DataFrame, understat: pd.DataFrame | None,
+                    fbref: pd.DataFrame | None, write: bool = True) -> dict:
+    """Clubs, links, conflicts and review tables for the sources given; optionally written.
+
+    Every input needs `league_code`. Pass None for a source to leave its links
+    as they are on disk. Returns a dict with `crosswalk` (this call's links),
     plus per source: clubs_<s>, conflicts_<s>, review_<s>, unmapped_clubs_<s>.
     """
     tm = tm_players(panel)
-    out, all_links = {}, []
-    sources = [("understat", understat_players(understat), None)]
+    out, all_links, sources = {}, [], []
+    if understat is not None:
+        sources.append(("understat", understat_players(understat), None))
     if fbref is not None:
         sources.append(("fbref", fbref_players(fbref), fbref_public_map()))
     for source, src, seed in sources:
@@ -348,10 +361,12 @@ def build_crosswalk(panel: pd.DataFrame, understat: pd.DataFrame, fbref: pd.Data
     out["crosswalk"] = pd.concat(all_links, ignore_index=True)
 
     if write:
+        # Notebook 02 builds the Understat links, notebook 05 the FBref ones:
+        # each write replaces its own sources' rows and keeps the others'.
+        built = [s for s, _, _ in sources]
         MANUAL_DIR.mkdir(parents=True, exist_ok=True)
-        out["crosswalk"].to_parquet(CROSSWALK_PATH, index=False)
-        pd.concat([out[f"clubs_{s}"] for s, _, _ in sources]).to_csv(
-            MANUAL_DIR / "club_crosswalk.csv", index=False)
+        _replace_rows(CROSSWALK_PATH, out["crosswalk"], built)
+        _replace_rows(CLUBS_PATH, pd.concat([out[f"clubs_{s}"] for s in built]), built)
         for s, _, _ in sources:
             out[f"review_{s}"].to_csv(MANUAL_DIR / f"review_{s}.csv", index=False)
         if not OVERRIDES_PATH.exists():
