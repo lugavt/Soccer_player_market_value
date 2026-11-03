@@ -234,10 +234,13 @@ def link_players(tm: pd.DataFrame, src: pd.DataFrame, clubs: pd.DataFrame, sourc
 
 
 def review_table(tm: pd.DataFrame, src: pd.DataFrame, links: pd.DataFrame, clubs: pd.DataFrame,
-                 source: str, minutes_col: str) -> pd.DataFrame:
-    """Unlinked source players who played, with the closest same-club TM name as a hint."""
-    linked = set(links["src_id"])
-    left = src[~src["src_id"].isin(linked) & (src[minutes_col].fillna(0) > 0)]
+                 source: str, minutes_col: str, never: set | None = None) -> pd.DataFrame:
+    """Unlinked source players who played, with the closest same-club TM name as a hint.
+
+    `never`: ids an override says never to link; they were reviewed already.
+    """
+    done = set(links["src_id"]) | (never or set())
+    left = src[~src["src_id"].isin(done) & (src[minutes_col].fillna(0) > 0)]
     if left.empty:
         return pd.DataFrame()
     team_of = dict(zip(zip(clubs["league_code"], clubs["club"]), clubs["team"]))
@@ -360,11 +363,13 @@ def build_crosswalk(panel: pd.DataFrame, understat: pd.DataFrame | None,
             ok = [pd.isna(born_t[p]) or pd.isna(born_s[s]) or abs(born_t[p] - born_s[s]) <= SEED_BIRTH_TOLERANCE
                   for s, p in zip(seed["src_id"], seed["player_id"])]
             seed = seed[ok]
-        links, conflicts = link_players(tm, src, clubs, source, load_overrides(source), seed)
+        overrides = load_overrides(source)
+        links, conflicts = link_players(tm, src, clubs, source, overrides, seed)
         out[f"clubs_{source}"] = clubs
         out[f"unmapped_clubs_{source}"] = check_clubs(tm, clubs, source)
         out[f"conflicts_{source}"] = conflicts
-        out[f"review_{source}"] = review_table(tm, src, links, clubs, source, "minutes")
+        never = set(overrides.loc[overrides["player_id"].isna(), "src_id"])
+        out[f"review_{source}"] = review_table(tm, src, links, clubs, source, "minutes", never)
         all_links.append(links)
     out["crosswalk"] = pd.concat(all_links, ignore_index=True)
 
