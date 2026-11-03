@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import shap
 
-from src.features.engineer import FEATURE_COLS, select_features
+from src.features.engineer import FEATURE_COLS, model_features, select_features
 
 MODELS_DIR = Path(__file__).parents[2] / "models"
 DEFAULT_MODEL_PATH = MODELS_DIR / "xgb_model.pkl"
@@ -47,7 +47,7 @@ def load_feature_names(path=DEFAULT_MODEL_PATH):
 
 def predict(model, X: pd.DataFrame) -> np.ndarray:
     """Return predicted market values in EUR (back-transformed from log)."""
-    return np.exp(model.predict(select_features(X)))
+    return np.exp(model.predict(select_features(X, model_features(model))))
 
 
 def explain(model, X: pd.DataFrame) -> dict:
@@ -57,13 +57,14 @@ def explain(model, X: pd.DataFrame) -> dict:
     `baseline_log + sum(shap_values) == pred_log` holds exactly in log-space
     and *not* after back-transforming, so never render raw SHAP values as EUR.
     """
+    features = model_features(model)
     explainer = shap.TreeExplainer(model)
-    sv = explainer.shap_values(select_features(X))
+    sv = explainer.shap_values(select_features(X, features))
     pred_log = float(explainer.expected_value + sv[0].sum())
     return {
         "baseline_log": float(explainer.expected_value),
         "baseline_eur": float(np.exp(explainer.expected_value)),
-        "shap_values": dict(zip(FEATURE_COLS, sv[0])),
+        "shap_values": dict(zip(features, sv[0])),
         "pred_log": pred_log,
         "pred_eur": float(np.exp(pred_log)),
     }

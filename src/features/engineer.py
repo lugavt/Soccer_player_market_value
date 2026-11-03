@@ -281,17 +281,31 @@ def build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def select_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Return just the model matrix, in `FEATURE_COLS` order.
+ONEHOT_PREFIXES = ("posgrp_",)
+
+
+def model_features(model) -> list[str]:
+    """The features a fitted model was trained on, in order; FEATURE_COLS if it doesn't say.
+
+    XGBoost records them when fitted on a DataFrame. Using them (not today's
+    FEATURE_COLS) keeps a model registered under an older feature set usable.
+    """
+    names = getattr(model, "feature_names_in_", None)
+    return list(names) if names is not None else list(FEATURE_COLS)
+
+
+def select_features(df: pd.DataFrame, features=None) -> pd.DataFrame:
+    """Return just the model matrix, in `features` order (default `FEATURE_COLS`).
 
     Reindexing guards against one-hot drift: `pd.get_dummies` only emits columns
-    for categories present in the data, so a subset missing (say) Senegalese
-    players would otherwise produce a narrower matrix than the model expects.
+    for categories present in the data, so a subset missing a category would
+    otherwise produce a narrower matrix than the model expects.
     Missing one-hot columns become 0; missing numeric columns become NaN, which
     XGBoost handles natively.
     """
-    X = df.reindex(columns=FEATURE_COLS)
-    onehot = [c for c in FEATURE_COLS if c.startswith("posgrp_")]
+    features = list(FEATURE_COLS if features is None else features)
+    X = df.reindex(columns=features)
+    onehot = [c for c in features if c.startswith(ONEHOT_PREFIXES)]
     X[onehot] = X[onehot].fillna(0).astype(int)
     return X
 

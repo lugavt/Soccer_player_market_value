@@ -46,3 +46,6 @@ data/_fbref/
 
 # Snapshot of the La Liga-only (v1) data and models, taken before the V2 scrape
 data/_v1_backup/
+
+# MLflow tracking store and artifacts (src/models/registry.py)
+mlops/

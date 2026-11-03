@@ -2,14 +2,20 @@
 
     python -m src.models.train
 
-Reads `data/panel_final.parquet`, writes `models/xgb_model.pkl` and
-`data/test_predictions.parquet`. Hyperparameters and the temporal split match
-notebook 03 — the notebook is for exploration, this is the reproducible path.
+Reads `data/panel_final.parquet` and registers the result in MLflow as a new
+version of `transfer-edge-value` (model, calibrated intervals, test
+predictions, metrics overall and per league). It does not touch models/: the app
+runs the champion, so compare and promote with
+
+    python -m src.models.promote          # report: new version vs champion
+    python -m src.models.promote --yes    # promote it if it passes the gate
+
+Hyperparameters and the temporal split match notebook 04 — the notebook is for
+exploration, this is the reproducible path.
 """
 
 import argparse
 import json
-import pickle
 from pathlib import Path
 
 import numpy as np
@@ -21,8 +27,9 @@ from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from src.data.loader import DATA_DIR, load_panel
-from src.features.engineer import FEATURE_COLS, build_features, temporal_split
+from src.data.loader import load_panel
+from src.features.engineer import FEATURE_COLS, TARGET, build_features, temporal_split
+from src.models import registry
 from src.models.intervals import coverage, predict_intervals, train_quantile_model
 
 MODELS_DIR = Path(__file__).parents[2] / "models"
@@ -102,9 +109,9 @@ def train_xgb(X_train, y_train, X_val, y_val, splits):
     return model
 
 
-def main(skip_baseline: bool = False):
+def main(skip_baseline: bool = False, description: str = ""):
     df = build_features(load_panel())
-    (X_train, y_train, _), (X_val, y_val, _), (X_test, y_test, test_rows) = temporal_split(df)
+    (X_train, y_train, _), (X_val, y_val, val_rows), (X_test, y_test, test_rows) = temporal_split(df)
 
     print(f"Train: {len(X_train)}   Val: {len(X_val)}   Test: {len(X_test)}\n")
     splits = {
@@ -134,20 +141,19 @@ def main(skip_baseline: bool = False):
     print(f"\n=== INTERVALS (test) ===\n  coverage: 50% interval {cov['50%']:.0%}, 80% interval {cov['80%']:.0%}"
           f"   (conformal margins, log: {interval_model['margins']})")
 
-    MODELS_DIR.mkdir(exist_ok=True)
-    DATA_DIR.mkdir(exist_ok=True)
-    with open(MODELS_DIR / "xgb_model.pkl", "wb") as f:
-        pickle.dump({"model": model, "features": FEATURE_COLS}, f)
-    with open(MODELS_DIR / "xgb_intervals.pkl", "wb") as f:
-        pickle.dump({**interval_model, "features": FEATURE_COLS}, f)
-    results.to_parquet(DATA_DIR / "test_predictions.parquet", index=False)
-
-    print(f"\nSaved models/xgb_model.pkl, models/xgb_intervals.pkl and "
-          f"data/test_predictions.parquet ({len(results)} rows)")
+    metrics = {**registry.evaluate(model, interval_model, val_rows, prefix="val"),
+               **registry.evaluate(model, interval_model, test_rows, prefix="test")}
+    fingerprint = registry.data_fingerprint(df[["year", "player_id", TARGET, *FEATURE_COLS]])
+    version = registry.log_and_register(
+        model, interval_model, params=model_params(), metrics=metrics,
+        test_predictions=results, fingerprint=fingerprint, description=description,
+        tags={"source": "src.models.train"})
+    print(f"\nCompare version {version} with the champion: python -m src.models.promote")
     return model, results
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-baseline", action="store_true", help="skip the Ridge comparison")
+    parser.add_argument("--description", default="", help="note stored with the run, e.g. 'v2: + league'")
     main(**vars(parser.parse_args()))

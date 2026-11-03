@@ -24,7 +24,7 @@ import streamlit as st
 # `streamlit run app/main.py` puts app/ on sys.path, not the repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.features.engineer import select_features  # noqa: E402
+from src.features.engineer import model_features, select_features  # noqa: E402
 from src.models.predict import explain, load_interval_model, load_model  # noqa: E402
 from src.models.valuation import (  # noqa: E402
     interval_coverage,
@@ -393,7 +393,7 @@ with search_tab:
     st.subheader("Why this valuation")
 
     result = explain(model, row)
-    feature_values = select_features(row).iloc[0]
+    feature_values = select_features(row, model_features(model)).iloc[0]
     shap_df = pd.DataFrame(
         {
             "feature": list(result["shap_values"].keys()),

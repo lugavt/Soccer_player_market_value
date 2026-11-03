@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-from src.features.engineer import select_features
+from src.features.engineer import model_features, select_features
 
 QUANTILES = np.array([0.10, 0.25, 0.50, 0.75, 0.90])
 LEVELS = {0.8: (0.10, 0.90), 0.5: (0.25, 0.75)}   # interval level -> (lower q, upper q)
@@ -49,7 +49,8 @@ def _col(q: float) -> int:
 
 def predict_intervals(bundle: dict, X: pd.DataFrame) -> pd.DataFrame:
     """low_80 / low_50 / high_50 / high_80 in EUR for each row of X."""
-    q = np.sort(bundle["model"].predict(select_features(X)), axis=1)
+    model = bundle["model"]
+    q = np.sort(model.predict(select_features(X, model_features(model))), axis=1)
     out = {}
     for level, (lo_q, hi_q) in LEVELS.items():
         m = bundle["margins"][level]
