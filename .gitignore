@@ -43,3 +43,6 @@ outputs/*
 
 # FBref raw HTML cache + browser profile (notebook 05)
 data/_fbref/
+
+# Snapshot of the La Liga-only (v1) data and models, taken before the V2 scrape
+data/_v1_backup/
