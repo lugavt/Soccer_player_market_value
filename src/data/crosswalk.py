@@ -18,7 +18,9 @@ league, and are one-to-one per season:
                   run earlier, it paired Levante's "Toño" with Real Sociedad's.
 
 When both sides know the birth year (FBref does, Understat doesn't), it must
-agree, for every rule. A player linked to two different ids in different seasons
+agree, for every name rule. The public map links by profile URL, not by name, so
+there the birth year only guards against gross errors: FBref's is off by a year
+or two for a handful of players (Dwight Gayle, born 1989, is 1990 there). A player linked to two different ids in different seasons
 keeps the link seen in more seasons; the loser goes to the review file.
 
 Clubs are matched the same way, without text similarity: a Transfermarkt club and
@@ -49,6 +51,7 @@ FBREF_MAP_PATH = DATA_DIR / "_fbref" / "fbref_to_tm_mapping.csv"
 
 RULES = ["override", "public_map", "name_club", "subset_club", "initial_club", "name"]
 MIN_SHARED_PLAYERS = 3     # a club pairing backed by fewer exact names is not trusted
+SEED_BIRTH_TOLERANCE = 2   # years a public-map link's two birth years may differ
 
 # Letters NFKD does not decompose into a base letter + accent.
 _LETTERS = str.maketrans({"ø": "o", "Ø": "o", "æ": "ae", "Æ": "ae", "ß": "ss", "ł": "l", "Ł": "l",
@@ -72,20 +75,24 @@ def club_table(tm: pd.DataFrame, src: pd.DataFrame, source: str) -> pd.DataFrame
     """Pair each Transfermarkt club with a source team, per league, by shared exact names.
 
     `tm` has year, league_code, club, name_norm; `src` has year, league_code,
-    team (one team per row), name_norm. Greedy one-to-one by shared count.
+    team (one team per row), name_norm. Greedy one-to-one by shared count, except
+    that a team may take a second Transfermarkt name for seasons the first never
+    covers: a club renamed on one side only ("SPAL" -> "SPAL 2013").
     """
     pairs = tm.merge(src, on=["year", "league_code", "name_norm"])
     counts = (pairs.groupby(["league_code", "club", "team"]).size()
               .rename("shared_players").reset_index()
               .sort_values(["shared_players", "club", "team"], ascending=[False, True, True]))
-    used_club, used_team, rows = set(), set(), []
+    seasons = tm.groupby(["league_code", "club"])["year"].agg(set).to_dict()
+    used_club, team_seasons, rows = set(), {}, []
     for r in counts.itertuples(index=False):
         if r.shared_players < MIN_SHARED_PLAYERS:
             break
-        if (r.league_code, r.club) in used_club or (r.league_code, r.team) in used_team:
+        club, team = (r.league_code, r.club), (r.league_code, r.team)
+        if club in used_club or team_seasons.get(team, set()) & seasons[club]:
             continue
-        used_club.add((r.league_code, r.club))
-        used_team.add((r.league_code, r.team))
+        used_club.add(club)
+        team_seasons[team] = team_seasons.get(team, set()) | seasons[club]
         rows.append(r._asdict())
     table = pd.DataFrame(rows, columns=["league_code", "club", "team", "shared_players"])
     table.insert(0, "source", source)
@@ -346,11 +353,12 @@ def build_crosswalk(panel: pd.DataFrame, understat: pd.DataFrame | None,
         src_norm = exploded.assign(name_norm=exploded["src_name"].map(normalize_name))
         clubs = club_table(tm_norm, src_norm, source)
         if seed is not None:
-            # Keep only map entries for players present on both sides, with agreeing birth years.
+            # Keep only map entries for players present on both sides, with close birth years.
             born_t = tm.drop_duplicates("player_id").set_index("player_id")["birth_year"]
             born_s = src.drop_duplicates("src_id").set_index("src_id")["birth_year"]
             seed = seed[seed["player_id"].isin(born_t.index) & seed["src_id"].isin(born_s.index)]
-            ok = [_born_ok(born_t[p], born_s[s]) for s, p in zip(seed["src_id"], seed["player_id"])]
+            ok = [pd.isna(born_t[p]) or pd.isna(born_s[s]) or abs(born_t[p] - born_s[s]) <= SEED_BIRTH_TOLERANCE
+                  for s, p in zip(seed["src_id"], seed["player_id"])]
             seed = seed[ok]
         links, conflicts = link_players(tm, src, clubs, source, load_overrides(source), seed)
         out[f"clubs_{source}"] = clubs

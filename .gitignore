@@ -57,3 +57,6 @@ data/_understat/
 # in git: it holds the decisions a person made on the review files.
 data/manual/review_*.csv
 data/manual/club_crosswalk.csv
+
+# Proposed overrides, written for a person to accept (see id_overrides.csv)
+data/manual/proposed_*.csv

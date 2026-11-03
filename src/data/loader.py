@@ -13,7 +13,8 @@ def load_panel() -> pd.DataFrame:
     panel = pd.read_parquet(DATA_DIR / "panel_final.parquet")
     fbref = DATA_DIR / "fbref_matched.parquet"
     if fbref.exists():
-        matched = pd.read_parquet(fbref).drop(columns=["fbref_match_score"])
+        # fbref_match_score: the v1 fuzzy join's column, in files written before the crosswalk
+        matched = pd.read_parquet(fbref).drop(columns=["fbref_match_score"], errors="ignore")
         panel = panel.assign(year=panel["year"].astype(int), player_id=panel["player_id"].astype(str))
         matched = matched.assign(year=matched["year"].astype(int), player_id=matched["player_id"].astype(str))
         panel = panel.merge(matched, on=["year", "player_id"], how="left")
